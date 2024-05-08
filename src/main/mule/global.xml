@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:redis="http://www.mulesoft.org/schema/mule/redis" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/redis http://www.mulesoft.org/schema/mule/redis/current/mule-redis.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<configuration-properties doc:name="Configuration properties" doc:id="5d0aff0f-e331-40eb-a406-612dd99bb953" file="config/properties.yaml" />
+	<http:listener-config name="httpListenerConfig" doc:name="HTTP Listener config"
+		doc:id="1a329509-3c22-4746-94ff-9ddddcb167d4">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+<!-- 	<redis:redis-config name="redisCacheConfig" doc:name="Redis Redis" doc:id="9869c56e-f705-4e04-a43f-b69f935b61c9" >
+		<redis:nonclustered-connection host="${redis.host}" port="${redis.port}" entryTTL="${redis.entryTTL}" connectionTimeout="${redis.connTimeout}" password="${redis.password}"/>
+	</redis:redis-config> -->
+	<os:object-store name="objectStore" doc:name="Object store" doc:id="374e9382-6328-4404-8b3a-8acce5e1efc9" maxEntries="${objectStore.maxEntries}" entryTtl="${objectStore.entryTTL}" expirationInterval="${objectStore.expirationInterval}" expirationIntervalUnit="SECONDS" config-ref="redisObjectStoreConfig"/>
+	<os:config name="redisObjectStoreConfig" doc:name="ObjectStore Config" doc:id="55d28af3-c858-43a4-8338-d74b6c83873e" >
+		<redis:nonclustered-connection host="${redis.host}" port="${redis.port}" entryTTL="${redisCloud.entryTTL}" connectionTimeout="${redisCloud.connTimeout}" />
+	</os:config>
+	<ee:object-store-caching-strategy name="cachingStrategy" doc:name="Caching Strategy" doc:id="2cc515e1-e310-442a-99e2-f817ca5ff98a" keyGenerationExpression="#[vars.orderId]" objectStore="objectStore" />
+	<redis:redis-config name="redisCloudCacheConfig" doc:name="Redis Redis" doc:id="a6501b23-bf60-4d05-a228-3ca5e20a2c71" >
+		<redis:nonclustered-connection host="${redisCloud.host}" port="${redisCloud.port}" password="${redisCloud.password}" entryTTL="${redisCloud.entryTTL}" connectionTimeout="${redisCloud.connTimeout}"/>
+	</redis:redis-config>
+</mule>

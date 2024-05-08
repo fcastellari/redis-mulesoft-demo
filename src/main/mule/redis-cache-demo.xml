@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:redis="http://www.mulesoft.org/schema/mule/redis"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/redis http://www.mulesoft.org/schema/mule/redis/current/mule-redis.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="obtener-orden" doc:id="e8309a0b-6902-4984-be11-57722e5eb333">
+		<http:listener doc:name="GET /cache/ordenes/{orderId}" doc:id="8fca14db-1893-4e5b-9baa-bea0837b922d" config-ref="httpListenerConfig" path="/cache/orders/{orderId}" />
+		<set-variable value="#[attributes.queryParams.tipoCache default null]" doc:name="tipoCache" doc:id="820f00db-d589-4080-aa01-ef5dad24364d" variableName="tipoCache" />
+		<set-variable value="#[attributes.uriParams.'orderId']" doc:name="orderId" doc:id="f26d1a9e-6121-4aa6-ba1b-79e22cc1baee" variableName="orderId" />
+		<logger level="INFO" doc:name="Inicio" doc:id="06423aa3-2f7d-46eb-86ad-5ace339db8e9" message="Inicio obtener orden - cache: #[vars.tipoCache] - orden: #[vars.orderId]" />
+		<choice doc:name="tipoCache" doc:id="5d1fcad2-e796-4115-b2d6-67594d6db752">
+			<when expression='#[vars.tipoCache == "redis"]'>
+				<flow-ref doc:name="redis-cache" doc:id="89131e3e-5fc0-45bb-8ee5-3c0f8371d6c5" name="redis-cache" />
+			</when>
+			<when expression='#[vars.tipoCache == "objectStore"]'>
+				<flow-ref doc:name="object-store-cache" doc:id="33fac9ce-2c47-4f27-931b-69369875f470" name="object-store-cache" />
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="tipoCache invalido" doc:id="8f4faa11-5c8b-4233-b33f-367d70b58d96" message="No existe el tipo de cache #[vars.tipoCache]" />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Armar respuesta" doc:id="f5fbeae7-297d-4738-8e68-5c4e9dcc0c82">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (isEmpty(payload)) 
+	(mensaje: "tipoCache inválido. Debe ser 'redis' u 'objectStore' ") 
+    else  payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+		<logger level="INFO" doc:name="Fin" doc:id="91131fd9-025a-480d-a5fe-ef8b3b63d097" message="Fin obtener orden" />
+	</flow>
+	<sub-flow name="redis-cache" doc:id="42424e38-5d67-43b7-806f-905c9f7b0f02" >
+		<flow-ref doc:name="buscar-redis-cache" doc:id="6958d7ea-7931-4833-bbe3-acda04efdebd" name="buscar-redis-cache" />
+		<choice doc:name="¿Estaba en caché?" doc:id="0ba609e0-7b72-43e4-a851-6775b571e7cc" >
+			<when expression="#[isEmpty(payload)]">
+				<flow-ref doc:name="buscar-orden" doc:id="fd09ace2-4fcd-472b-ba44-73f7027d7958" name="buscar-orden" />
+				<flow-ref doc:name="almacenar-redis-cache" doc:id="d0bf37e9-c181-40c4-a44f-58bcca8cf614" name="almacenar-redis-cache"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Orden existe en caché" doc:id="e486bbcc-9cc6-47fb-a184-7e6f309b72d5" message="Se encontró la orden #[vars.orderId] en el caché de Redis"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="buscar-redis-cache" doc:id="53eca0c2-3813-4c3f-9351-f2caa487440a">
+		<logger level="INFO" doc:name="Antes de buscar en Redis" doc:id="37d989f3-5612-4186-8f58-42968352f465" message="Antes de buscar en Redis la orden #[vars.orderId]" />
+		<redis:get doc:name="Buscar orden en Redis" doc:id="6a3a7de2-1b4f-4252-a8c8-2ce6e0318d5f" config-ref="redisCloudCacheConfig" key="#[vars.orderId]" targetValue='#[read(payload, "application/json")]'/>
+		<ee:transform doc:name="Transformar a JSON" doc:id="bc667888-c791-4a77-8a8f-d2b467d57e30" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if (isEmpty(payload)) payload else read(payload, "application/java")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Despues de buscar en Redis" doc:id="e563643e-5d65-4486-bc92-95738c50797c" message="Después de buscar en Redis la orden #[vars.orderId]" />
+	</sub-flow>
+	<sub-flow name="almacenar-redis-cache" doc:id="202fe38b-a0d7-40e1-950b-b3424b276ede" >
+		<logger level="INFO" doc:name="Antes de buscar en Redis" doc:id="6e74c45a-a094-4372-85b7-53d4083751fe" message="Antes de almacenar en Redis la orden #[vars.orderId]" />
+		<redis:set doc:name="Almacenar Orden" doc:id="54772e0b-32cd-4efb-9507-e10c2710ca6a" config-ref="redisCloudCacheConfig" key="#[vars.orderId]" target="redisRsp">
+			<redis:value ><![CDATA[#[write(payload)]]]></redis:value>
+		</redis:set>
+		<logger level="INFO" doc:name="Despues de buscar en Redis" doc:id="013cae10-82b6-4c1b-aaed-f07410b44804" message="Después de almacenar en Redis la orden #[vars.orderId]" />
+	</sub-flow>
+	<sub-flow name="object-store-cache" doc:id="84836da7-e59a-4a3d-b273-945716bcc547" >
+		<logger level="INFO" doc:name="Antes cache-scope" doc:id="1a4900f2-32be-48a0-ad08-2f8560a7ad84" message="Antes de cache-scope - orden #[vars.orderId]"/>
+		<ee:cache doc:name="orderId" doc:id="33cdb05c-3c59-49e3-bc57-6dc3cbcc69f2" cachingStrategy-ref="cachingStrategy">
+			<flow-ref doc:name="Buscar Orden" doc:id="cffec093-544d-477e-898a-872ec99d0911" name="buscar-orden"/>
+		</ee:cache>
+		<logger level="INFO" doc:name="Después cache-scope" doc:id="d2e1b566-ae8d-4572-8dd2-43fe68a46fcb" message="Después de cache-scope" />
+	</sub-flow>
+	<sub-flow name="buscar-orden" doc:id="37de1020-9ac9-40e2-8e00-a3a239d95422">
+		<logger level="INFO" doc:name="Antes de llamar al backend" doc:id="b976dee8-e57e-4676-8bf0-144d57f50e6d" message="Antes de llamar al backend para obtener a la orden - Orden no cacheada"/>
+		<ee:transform doc:name="Buscar Orden en backend" doc:id="49ee2c81-0e8a-49d5-9d83-d0486825dec8">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+  "ordenCompra": {
+    "numero": vars.orderId,
+    "fecha": "2024-01-01",
+    "productos": [
+      {
+        "id": "P001",
+        "nombre": "Producto A",
+        "cantidad": 3,
+        "precioUnitario": 25.99
+      },
+      {
+        "id": "P002",
+        "nombre": "Producto B",
+        "cantidad": 2,
+        "precioUnitario": 49.99
+      },
+      {
+        "id": "P003",
+        "nombre": "Producto C",
+        "cantidad": 1,
+        "precioUnitario": 79.99
+      }
+    ],
+    "total": 281.92,
+    "cliente": {
+      "nombre": "Cliente Ejemplo",
+      "direccion": "Calle Principal 123",
+      "ciudad": "Ciudad Ejemplo"
+    }
+  },
+  "estadoEnvio": {
+    "estado": "En Tránsito",
+    "fechaEnvio": "2024-01-02",
+    "numeroSeguimiento": "TR123456789"
+  },
+  "estadoEntrega": {
+    "estado": "Entregado",
+    "fechaEntrega": "2024-01-05",
+    "firmadoPor": "Firma del Cliente"
+  }
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+		<logger level="INFO" doc:name="Después de llamar al backend" doc:id="f5b2f09b-50ed-4746-b3b4-208b3f1e1e18" message="Después de llamar al backend para obtener la Orden"/>
+	</sub-flow>
+</mule>

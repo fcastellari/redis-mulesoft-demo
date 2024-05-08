@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_84836da7_e59a_4a3d_b273_945716bcc547_Input_Variables_orderId = String | Null
+

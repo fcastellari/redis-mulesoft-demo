@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_37de1020_9ac9_40e2_8e00_a3a239d95422_Output_Variables_orderId = String | Null
+

@@ -1,0 +1,3 @@
+curl --location 'localhost:8081/cache/orders/AR001-0001987?tipoCache=redis'
+
+curl --location 'localhost:8081/cache/orders/AR001-0001987?tipoCache=objectStore'

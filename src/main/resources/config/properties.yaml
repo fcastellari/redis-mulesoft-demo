@@ -1,0 +1,23 @@
+# Configuración de Redis
+redis:
+  host: localhost
+  port: "6379"
+  connTimeout: "2000"
+  entryTTL: "60000"
+  username: ""
+  password: ""
+
+redisCloud:
+  host: "redis-18135.c257.us-east-1-3.ec2.redns.redis-cloud.com"
+  port: "18135"
+  connTimeout: "2000"
+  entryTTL: "60000"
+  username: "default"
+  password: "5vM6LlMCzQzaLQ2Tv4Sgz9dcXngpHdhd"
+#Configuración del Object Store
+objectStore:
+  maxEntries: "500"
+  entryTTL: "3200"
+  expirationInterval: "1800"
+  
+  
